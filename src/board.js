@@ -1,10 +1,10 @@
 import * as THREE from 'three';
 import {mergeGeometries} from 'three/addons/utils/BufferGeometryUtils.js';
 import {B,clamp} from './balance.js';
-import {strokeWeight,strokeTurn} from './swing.js';
-import {GRIP,HEAD_TO_WRIST,makeHand} from './grip.js';
+import {STROKE,smooth,strokeWeight,strokeTurn} from './swing.js';
+import {GRIP,makeHand} from './grip.js';
 import {createPost,resizePost,renderPost} from './post.js';
-const UP=new THREE.Vector3(0,1,0),DOWN=new THREE.Vector3(0,-1,0),v1=new THREE.Vector3(),v2=new THREE.Vector3(),v3=new THREE.Vector3(),q1=new THREE.Quaternion(),matrix=new THREE.Matrix4(),color=new THREE.Color();
+const UP=new THREE.Vector3(0,1,0),DOWN=new THREE.Vector3(0,-1,0),v1=new THREE.Vector3(),v2=new THREE.Vector3(),v3=new THREE.Vector3(),q1=new THREE.Quaternion(),racketEuler=new THREE.Euler(0,0,0,'YXZ'),matrix=new THREE.Matrix4(),color=new THREE.Color();
 let artSeed=827;function rand(){artSeed=(Math.imul(artSeed,1664525)+1013904223)>>>0;return artSeed/4294967296;}
 function mat(c,extra={}){return new THREE.MeshStandardMaterial({color:c,roughness:.93,metalness:0,...extra});}
 function mesh(geo,material,x=0,y=0,z=0,parent){const m=new THREE.Mesh(geo,material);m.position.set(x,y,z);m.castShadow=true;m.receiveShadow=true;if(parent)parent.add(m);return m;}
@@ -115,7 +115,7 @@ function limb(material,length,radius=.075){const bone=new THREE.Bone();const par
 function limbIK(upper,lower,origin,end,length1,length2,pole){
   v1.copy(end).sub(origin);const d=clamp(v1.length(),Math.abs(length1-length2)+.002,length1+length2-.002);
   if(v1.lengthSq()<1e-10)v1.copy(DOWN);else v1.normalize();
-  // Solve to a reachable endpoint; never aim the forearm past its fixed length.
+  // Solve the short leg to its planted or stepping ankle.
   end.copy(origin).addScaledVector(v1,d);
   v2.copy(pole).addScaledVector(v1,-pole.dot(v1));
   if(v2.lengthSq()<1e-8)v2.set(1,0,0).addScaledVector(v1,-v1.x);
@@ -129,19 +129,21 @@ function limbIK(upper,lower,origin,end,length1,length2,pole){
 export function makePlayer(scene,shirtColor,skinColor,isBot){
   const root=new THREE.Group();scene.add(root);const hips=new THREE.Bone();root.add(hips);
   const shirt=mat(shirtColor),skin=mat(skinColor),shorts=mat(isBot?'#eee4cb':'#e9e5d0'),shoe=mat('#eee9d9'),sole=mat('#394f40'),hair=mat(isBot?'#493d2c':'#4a3d29');
-  const torso=new THREE.Bone();hips.add(torso);torso.position.y=1.12;
-  const body=mesh(new THREE.CylinderGeometry(.27,.23,.55,10),shirt,0,.15,0,torso);body.scale.z=.64;
-  mesh(new THREE.SphereGeometry(.11,8,6),skin,0,.5,0,torso);
-  const head=mesh(new THREE.SphereGeometry(.175,12,10),skin,0,.70,0,torso);head.scale.set(.85,1.11,.9);
-  const cap=mesh(new THREE.SphereGeometry(.181,12,8,0,Math.PI*2,0,Math.PI*.49),isBot?hair:shorts,0,.73,0,torso);cap.scale.set(.88,1,.94);
-  if(!isBot)box(.26,.025,.19,shorts,0,.76,-.13,torso);
-  const collar=mesh(new THREE.TorusGeometry(.085,.014,4,12),shorts,0,.44,0,torso);collar.rotation.x=Math.PI/2;
-  const belt=box(.43,.21,.29,shorts,0,1.02,0,hips);
-  const legs=[],arms=[],feet=[];
+  const torso=new THREE.Bone();hips.add(torso);torso.position.y=.90;
+  // Compact avatar proportions: the hands deliberately float, with no arm rig.
+  const body=mesh(new THREE.CylinderGeometry(.29,.23,.58,16),shirt,0,.13,0,torso);body.name='shirt';body.scale.z=.72;
+  mesh(new THREE.SphereGeometry(.09,12,8),skin,0,.47,0,torso);
+  const head=new THREE.Bone();head.name='head';head.position.y=.78;torso.add(head);
+  const face=mesh(new THREE.SphereGeometry(.30,20,14),skin,0,0,0,head);face.scale.set(.94,1.07,.90);
+  const cap=mesh(new THREE.SphereGeometry(.307,20,10,0,Math.PI*2,0,Math.PI*.49),isBot?hair:shorts,0,.055,0,head);cap.scale.set(.94,1,.91);
+  if(!isBot){const brim=mesh(new THREE.SphereGeometry(1,16,8),shorts,0,.071,-.235,head);brim.scale.set(.23,.022,.19);}
+  const collar=mesh(new THREE.TorusGeometry(.09,.018,6,16),shorts,0,.425,0,torso);collar.rotation.x=Math.PI/2;
+  const pants=mesh(new THREE.CylinderGeometry(.231,.215,.18,16),shorts,0,-.24,0,torso);pants.scale.z=.72;
+  const legs=[],hands=[],feet=[];
   for(const side of [-1,1]){
-    const upper=limb(shorts,.47,.105),lower=limb(skin,.47,.066);hips.add(upper);upper.add(lower);const sock=mesh(new THREE.CylinderGeometry(.066,.064,.15,8),shoe,0,-.385,0,lower);
-    const foot=box(.145,.12,.29,shoe,side*.16,.09,-.05,root);box(.151,.024,.30,sole,0,-.05,0,foot);feet.push(foot);legs.push({upper,lower});
-    const ua=limb(skin,.37,.062),la=limb(skin,GRIP.forearm,.049);torso.add(ua);ua.add(la);const handRig=makeHand(skin,side);la.add(handRig.hand);mesh(new THREE.CapsuleGeometry(.085,.14,3,8),shirt,0,-.085,0,ua);mesh(new THREE.CylinderGeometry(.056,.056,.058,8),shoe,0,-.25,0,la);arms.push({upper:ua,lower:la,...handRig});
+    const upper=limb(shorts,.33,.093),lower=limb(skin,.33,.075);hips.add(upper);upper.add(lower);legs.push({upper,lower});
+    const foot=box(.18,.12,.32,shoe,side*.18,.10,-.03,root);box(.185,.024,.33,sole,0,-.05,0,foot);feet.push(foot);
+    const handRig=makeHand(skin,side);root.add(handRig.hand);hands.push(handRig);
   }
   const racket=new THREE.Group();scene.add(racket);const frame=mat(isBot?'#edc27a':'#d9ed9e'),grip=mat('#253e36');
   const hoop=mesh(new THREE.TorusGeometry(.25,.018,6,30),frame,0,0,0,racket);hoop.scale.y=1.3;
@@ -150,7 +152,7 @@ export function makePlayer(scene,shirtColor,skinColor,isBot){
   cylinder(.025,.026,.28,grip,0,-.65,0,racket,8);lineBetween(new THREE.Vector3(-.12,-.27,0),new THREE.Vector3(0,-.52,0),.014,frame,racket);lineBetween(new THREE.Vector3(.12,-.27,0),new THREE.Vector3(0,-.52,0),.014,frame,racket);
   const shadowCanvas=document.createElement('canvas');shadowCanvas.width=64;shadowCanvas.height=64;const ctx=shadowCanvas.getContext('2d'),gradient=ctx.createRadialGradient(32,32,2,32,32,32);gradient.addColorStop(0,'rgba(24,45,32,.28)');gradient.addColorStop(1,'rgba(24,45,32,0)');ctx.fillStyle=gradient;ctx.fillRect(0,0,64,64);
   const ao=mesh(new THREE.PlaneGeometry(1.5,1.0),new THREE.MeshBasicMaterial({map:new THREE.CanvasTexture(shadowCanvas),transparent:true,depthWrite:false}),0,.031,0,scene);ao.rotation.x=-Math.PI/2;ao.castShadow=false;
-  return {root,hips,torso,legs,arms,feet,racket,ao,footX:new Float64Array(2),footZ:new Float64Array(2),footFromX:new Float64Array(2),footFromZ:new Float64Array(2),footToX:new Float64Array(2),footToZ:new Float64Array(2),stepStart:new Float64Array([-10,-10]),nextFoot:0,lastStep:-10,initialized:false,lastX:0,lastZ:0,origin:new THREE.Vector3(),end:new THREE.Vector3(),pole:new THREE.Vector3(0,0,-1),handTarget:new THREE.Vector3(),gripPole:new THREE.Vector3(),gripNormal:new THREE.Vector3(),footError:0,weights:new Float32Array([1,0,0,0,0,0])};
+  return {style:'floating-hands',root,hips,torso,head,legs,hands,feet,racket,ao,gripHand:0,footX:new Float64Array(2),footZ:new Float64Array(2),footFromX:new Float64Array(2),footFromZ:new Float64Array(2),footToX:new Float64Array(2),footToZ:new Float64Array(2),stepStart:new Float64Array([-10,-10]),nextFoot:0,lastStep:-10,initialized:false,lastX:0,lastZ:0,origin:new THREE.Vector3(),end:new THREE.Vector3(),pole:new THREE.Vector3(0,0,-1),footError:0,weights:new Float32Array([1,0,0,0,0,0])};
 }
 export function animatePlayer(p,s,i,alpha,delta){
   const x=THREE.MathUtils.lerp(s.prevX[i],s.x[i],alpha),z=THREE.MathUtils.lerp(s.prevZ[i],s.z[i],alpha),direction=i===0?1:-1,speed=Math.hypot(s.vx[i],s.vz[i]);
@@ -164,7 +166,8 @@ export function animatePlayer(p,s,i,alpha,delta){
   const bob=(speed>.2?Math.sin(renderTime*speed*2)*.027:.007*Math.sin(renderTime*2.7))-.045*s.windup[i]-.025*weight;p.hips.position.y=bob;
   const blend=1-Math.exp(-animationDelta*18),running=clamp(speed/3,0,1),plant=active?Math.max(0,1-Math.abs(age)/.12):0,split=s.phase==='rally'&&s.receiver===i&&s.time-s.contactAt[1-i]<.2?1:0;
   p.weights[0]+=(1-Math.max(running,active?1:0,split)-p.weights[0])*blend;p.weights[1]+=(split-p.weights[1])*blend;p.weights[2]+=(running-p.weights[2])*blend;p.weights[3]+=(plant-p.weights[3])*blend;p.weights[4]+=((active&&age<.15?1:0)-p.weights[4])*blend;p.weights[5]+=((active&&age>=.15?1:0)-p.weights[5])*blend;
-  p.torso.rotation.y=swing;p.torso.rotation.z+=(clamp(-s.vx[i]*.025,-.12,.12)-p.torso.rotation.z)*blend;p.torso.rotation.x=-p.weights[3]*.08-p.weights[2]*.06;
+  p.head.rotation.set(-weight*.05,-swing*.25,0);
+  p.torso.rotation.y=swing;p.torso.rotation.z+=(clamp(-s.vx[i]*.025,-.12,.12)-p.torso.rotation.z)*blend;p.torso.rotation.x=-p.weights[3]*.12-p.weights[2]*.10-s.windup[i]*.045;
   for(let j=0;j<2;j++){
     const neutralX=x+(j?1:-1)*.19,neutralZ=z-.03;
     const drift=Math.hypot(p.footX[j]-neutralX,p.footZ[j]-neutralZ);
@@ -174,67 +177,39 @@ export function animatePlayer(p,s,i,alpha,delta){
     const t=clamp((s.time-p.stepStart[j])/stride,0,1),smooth=t*t*(3-2*t),height=Math.sin(t*Math.PI)*.13;
     if(t<1){p.footX[j]=THREE.MathUtils.lerp(p.footFromX[j],p.footToX[j],smooth);p.footZ[j]=THREE.MathUtils.lerp(p.footFromZ[j],p.footToZ[j],smooth);}else if(s.time-p.stepStart[j]<stride+.05){p.footX[j]=p.footToX[j];p.footZ[j]=p.footToZ[j];}
     p.feet[j].position.set((p.footX[j]-x)*direction,.10+height,(p.footZ[j]-z)*direction-.03);p.feet[j].rotation.x=-Math.sin(t*Math.PI)*.12;
-    p.origin.set((j?1:-1)*.16,.99,0);p.end.set((p.footX[j]-x)*direction,.16+height-bob,(p.footZ[j]-z)*direction);p.pole.set(0,0,-1);limbIK(p.legs[j].upper,p.legs[j].lower,p.origin,p.end,.47,.47,p.pole);
+    p.origin.set((j?1:-1)*.16,.73,0);p.end.set((p.footX[j]-x)*direction,.16+height-bob,(p.footZ[j]-z)*direction);p.pole.set(0,0,-1);
+    // Short legs extend slightly during a long running stride; planted feet stay
+    // in world space, and the ankle still reaches the actual shoe.
+    const length=Math.max(.33,p.origin.distanceTo(p.end)*.505),leg=p.legs[j];
+    limbIK(leg.upper,leg.lower,p.origin,p.end,length,length,p.pole);
+    leg.upper.children[0].scale.y=leg.lower.children[0].scale.y=length/.33;
+    leg.upper.children[0].position.y=leg.lower.children[0].position.y=-length*.5;
   }
   const hand=i===0?s.hand:-1;
   const rx=THREE.MathUtils.lerp(s.oldRackX[i],s.rackX[i],alpha),ry=THREE.MathUtils.lerp(s.oldRackY[i],s.rackY[i],alpha),rz=THREE.MathUtils.lerp(s.oldRackZ[i],s.rackZ[i],alpha);
   p.racket.position.set(rx,ry,rz);
-  // Solve in hips-local coordinates, with shoulders attached to the rotating torso.
-  p.torso.position.set(0,1.12,0);
-  p.handTarget.set((rx-x)*direction,ry-bob,(rz-z)*direction); // racket head
-  p.origin.set(hand*.26,.37,0).applyQuaternion(p.torso.quaternion).add(p.torso.position);
-  v1.copy(p.handTarget).sub(p.origin);const reach=v1.length();
-  const maxReach=HEAD_TO_WRIST+.725;
-  if(reach>maxReach){v1.multiplyScalar((reach-maxReach)/reach);p.torso.position.add(v1);p.origin.add(v1);}
-  // Intersect the head-to-wrist sphere with the arm's reach sphere. Choose its
-  // front/outward pole consistently: a nearest-preferred-point solve can flip
-  // to the opposite side of the circle when the racket crosses that point.
-  v1.copy(p.origin).sub(p.handTarget);const d=v1.length();v1.multiplyScalar(1/Math.max(d,1e-8));
-  const armReach=Math.min(.735,Math.max(.70,Math.abs(d-HEAD_TO_WRIST)+.025));
-  const cosine=clamp((HEAD_TO_WRIST*HEAD_TO_WRIST+d*d-armReach*armReach)/(2*HEAD_TO_WRIST*Math.max(d,1e-8)),-1,1);
-  // Keep the wrist below the head of the racket, including waist-high contact.
-  // The old front/outward preference held the wrist at shoulder height and
-  // selected a hanging, inverted racket even for an ordinary flat forehand.
-  // Retain the handed lateral bias so the low solution clears the thighs.
-  v3.set(hand*.65,-1,-.35).applyQuaternion(p.torso.quaternion);v3.addScaledVector(v1,-v3.dot(v1));
-  if(v3.lengthSq()<1e-8)v3.set(0,-1,0).addScaledVector(v1,v1.y);
-  v3.normalize();
-  if(fresh){p.gripPole.copy(v3);p.gripNormal.copy(v1);}
-  else{
-    q1.setFromUnitVectors(p.gripNormal,v1);p.gripPole.applyQuaternion(q1);
-    p.gripPole.addScaledVector(v1,-p.gripPole.dot(v1)).normalize();
-    v2.crossVectors(p.gripPole,v3);const roll=Math.atan2(v1.dot(v2),p.gripPole.dot(v3));
-    const maxRoll=animationDelta*18;q1.setFromAxisAngle(v1,clamp(roll,-maxRoll,maxRoll));p.gripPole.applyQuaternion(q1);
-    p.gripNormal.copy(v1);
+  // Pose the racket directly. Its head remains at the interpolated physics
+  // position; the grip is a rigid child instead of the endpoint of an arm solve.
+  const finish=smooth(age/STROKE.follow),overhead=s.strokeServe[i]||s.shape[i]===4;
+  const contactTilt=overhead?-.16:-1.10,finishTilt=s.shape[i]===2?2.15:overhead?.50:.40;
+  const tilt=-hand*.28*(1-weight)+hand*s.side[i]*(contactTilt+(finishTilt-contactTilt)*finish)*weight;
+  racketEuler.set(.16+weight*.10,(i===0?0:Math.PI)+weight*hand*s.side[i]*.12,tilt,'YXZ');
+  q1.setFromEuler(racketEuler);
+  if(fresh)p.racket.quaternion.copy(q1);else p.racket.quaternion.rotateTowards(q1,animationDelta*18);
+  if(p.gripHand!==hand){
+    p.gripHand=hand;
+    for(let j=0;j<2;j++){
+      const h=p.hands[j],dominant=j===(hand===1?1:0);
+      (dominant?p.racket:p.root).add(h.hand);
+      h.mesh.geometry=dominant?h.grippingGeometry:h.restingGeometry;
+    }
   }
-  v2.copy(v1).multiplyScalar(cosine).addScaledVector(p.gripPole,Math.sqrt(1-cosine*cosine));
-  p.end.copy(p.handTarget).addScaledVector(v2,HEAD_TO_WRIST);
-  v1.copy(p.handTarget).sub(p.end).normalize();v1.x*=direction;v1.z*=direction;
-  // Parallel transport the frame: no sudden 180-degree roll at vertical poses.
-  v2.set(-hand*GRIP.wristSide,GRIP.headToGrip+GRIP.wristDrop,0).normalize().applyQuaternion(p.racket.quaternion);q1.setFromUnitVectors(v2,v1);p.racket.quaternion.premultiply(q1).normalize();
-  p.handTarget.copy(p.end).sub(p.torso.position);q1.copy(p.torso.quaternion).invert();p.handTarget.applyQuaternion(q1);
-  for(let j=0;j<2;j++){
-    const side=j?1:-1;p.origin.set(side*.26,.37,0);
-    if(j===(hand===1?1:0))p.end.copy(p.handTarget);
-    else {const prep=s.prepare[i];p.end.set(side*(.39+Math.sin(renderTime*5)*.015),-.08+weight*.14+prep*.91,-.18-weight*.12+prep*.08);}
-    p.pole.set(side,-.4,-.1);limbIK(p.arms[j].upper,p.arms[j].lower,p.origin,p.end,.37,GRIP.forearm,p.pole);
-    p.arms[j].hand.rotation.set(0,0,side*Math.PI/2);
-    p.arms[j].mesh.geometry=j===(hand===1?1:0)?p.arms[j].grippingGeometry:p.arms[j].restingGeometry;
-  }
-  // Match the whole palm frame to the racket, not just a point at the wrist.
-  // The hand remains a child of the forearm, so both attachments are inspectable.
-  p.root.updateMatrixWorld(true);
-  const arm=p.arms[hand===1?1:0];arm.hand.getWorldPosition(p.end);arm.lower.getWorldPosition(v2);
-  v1.copy(p.racket.position).sub(p.end).normalize();v2.subVectors(p.end,v2);v2.addScaledVector(v1,-v2.dot(v1));
-  // Transport alone accumulates twist and can fold the hand back into the arm.
-  // Roll around head-to-wrist (which preserves BOTH endpoints) toward a neutral
-  // wrist. Bound the correction so overhead poses cannot introduce a roll snap.
-  if(v2.lengthSq()>1e-8){
-    v2.normalize();v3.set(-hand,0,0).applyQuaternion(p.racket.quaternion);v3.addScaledVector(v1,-v3.dot(v1)).normalize();
-    p.pole.crossVectors(v3,v2);const roll=Math.atan2(v1.dot(p.pole),v3.dot(v2));
-    q1.setFromAxisAngle(v1,fresh?roll:clamp(roll,-animationDelta*18,animationDelta*18));p.racket.quaternion.premultiply(q1).normalize();
-  }
-  arm.lower.getWorldQuaternion(q1).invert();arm.hand.quaternion.copy(q1).multiply(p.racket.quaternion);
+  const holding=p.hands[hand===1?1:0],free=p.hands[hand===1?0:1];
+  holding.hand.position.set(hand*GRIP.wristSide,-GRIP.headToGrip-GRIP.wristDrop,0);holding.hand.quaternion.identity();
+  // The free hand balances the body turn, then rises independently for a toss.
+  const prep=s.prepare[i],run=Math.sin(renderTime*speed*2)*running;
+  free.hand.position.set(-hand*(.53+.09*s.windup[i]),1.10+prep*1.04+weight*.10+run*.05,-.25-weight*.15+run*.09);
+  free.hand.rotation.set(.18-prep*.8,-swing*.3,hand*(.20+prep*.24));
   p.ao.position.set(x,.031,z);
 }
 export function createBoard(canvas){
@@ -243,7 +218,7 @@ export function createBoard(canvas){
   const camera=new THREE.PerspectiveCamera(40,innerWidth/innerHeight,.1,220);camera.position.set(20,18,29);
   scene.add(new THREE.HemisphereLight('#f3ead5','#65765e',1.65));
   const sun=new THREE.DirectionalLight('#ffe2b5',2.8);sun.position.set(-21,15,-16);sun.target.position.set(0,0,0);sun.castShadow=true;sun.shadow.mapSize.set(2048,2048);sun.shadow.camera.left=-21;sun.shadow.camera.right=21;sun.shadow.camera.top=25;sun.shadow.camera.bottom=-22;sun.shadow.camera.near=.5;sun.shadow.camera.far=80;sun.shadow.bias=-.00022;sun.shadow.normalBias=.035;sun.shadow.radius=1.2;scene.add(sun,sun.target);
-  const {iron}=makeCourt(scene),net=makeNet(scene,iron),crowd=makeCrowd(scene),players=[makePlayer(scene,'#f2e8cc','#b88a5a',false),makePlayer(scene,'#bd704d','#c5986a',true)];
+  const {iron}=makeCourt(scene),net=makeNet(scene,iron),crowd=makeCrowd(scene),players=[makePlayer(scene,'#438b87','#b88a5a',false),makePlayer(scene,'#bd704d','#c5986a',true)];
   const ball=mesh(new THREE.SphereGeometry(.073,14,10),new THREE.MeshStandardMaterial({color:'#dfef69',emissive:'#d7e84e',emissiveIntensity:.6,roughness:.6}),0,1,10,scene);
   const seam=mesh(new THREE.TorusGeometry(.073,.003,3,24),mat('#f5f3c7'),0,0,0,ball);seam.rotation.x=.7;
   const glowCanvas=document.createElement('canvas');glowCanvas.width=64;glowCanvas.height=64;const gc=glowCanvas.getContext('2d'),g=gc.createRadialGradient(32,32,1,32,32,32);g.addColorStop(0,'rgba(238,255,167,.40)');g.addColorStop(.25,'rgba(238,255,167,.12)');g.addColorStop(1,'rgba(238,255,167,0)');gc.fillStyle=g;gc.fillRect(0,0,64,64);const glow=new THREE.Sprite(new THREE.SpriteMaterial({map:new THREE.CanvasTexture(glowCanvas),transparent:true,depthWrite:false}));glow.scale.set(.7,.7,1);ball.add(glow);

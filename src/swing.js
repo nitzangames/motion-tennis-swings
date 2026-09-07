@@ -69,8 +69,8 @@ export function updateRacket(s,p,dt){
     x+=(idleX-x)*recover;y+=(idleY-y)*recover;z+=(idleZ-z)*recover;
   }
   // Route cross-body strokes and recovery around the front of the shirt/head.
-  // Without this clearance the handle's IK cone can pass through a singularity
-  // as the racket centre crosses its own shoulder, flipping the wrist.
+  // This keeps the floating racket outside the body silhouette through contact
+  // and recovery; it does not solve an arm or constrain the hand's attachment.
   const lateral=Math.abs(x-s.x[p])/.72;
   if(lateral<1){
     const height=smooth((y-.60)/.25)*(1-smooth((y-1.80)/.45));
@@ -78,7 +78,7 @@ export function updateRacket(s,p,dt){
     z+=direction*(Math.min(localZ,-.65)-localZ)*route;
   }
   // A missed ball must never drag the racket metres away from its owner.
-  // This is the same reachable path used by collision and by the renderer.
+  // This is the same bounded strike path used by collision and by the renderer.
   const dx=x-sx,dy=y-sy,dz=z-sz,d=Math.hypot(dx,dy,dz);
   if(d>reach){x=sx+dx*reach/d;y=sy+dy*reach/d;z=sz+dz*reach/d;}
   if(dt>0){

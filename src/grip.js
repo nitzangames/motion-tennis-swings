@@ -3,11 +3,10 @@ import {mergeGeometries} from 'three/addons/utils/BufferGeometryUtils.js';
 
 // Racket-local metres. The handle sits inside the curled fingers, beyond the
 // wrist, with its long axis crossing the palm toward the index finger.
-export const GRIP=Object.freeze({headToGrip:.68,wristSide:.075,wristDrop:.03,forearm:.38});
-export const HEAD_TO_WRIST=Math.hypot(GRIP.wristSide,GRIP.headToGrip+GRIP.wristDrop);
+export const GRIP=Object.freeze({headToGrip:.68,wristSide:.075,wristDrop:.03});
 
 export function makeHand(material,side){
-  const hand=new THREE.Bone();hand.name=side===1?'right-hand':'left-hand';hand.position.y=-GRIP.forearm;
+  const hand=new THREE.Bone();hand.name=side===1?'right-hand':'left-hand';
   const parts=[];
   function oval(x,y,z,sx,sy,sz){
     const geometry=new THREE.SphereGeometry(1,10,8);geometry.scale(sx,sy,sz);geometry.translate(x,y,z);parts.push(geometry);

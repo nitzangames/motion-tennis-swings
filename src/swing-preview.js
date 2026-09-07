@@ -12,8 +12,8 @@ export const PREVIEW=Object.freeze({fps:120,frames:192,start:36,onset:72,toss:12
 export const previewStart=preview=>preview.variant.serve?PREVIEW.toss:PREVIEW.start;
 export const previewEnd=preview=>Math.min(PREVIEW.frames,preview.strike+PREVIEW.recoveryFrames);
 const notes=[
-  'Shares its arm path with topspin. The ball physics differ.',
-  'The same arm path as flat; topspin is applied to the ball.',
+  'Shares its racket path with topspin. The ball physics differ.',
+  'The same racket path as flat; topspin is applied to the ball.',
   'A descending wrist path, using the shared swing arc.',
   'A rising scoop, using the shared swing arc.',
   'An elevated strike target with a descending overhead path.'
@@ -28,7 +28,7 @@ export function createPreview(variant){
   scene.add(new THREE.HemisphereLight('#fff8e8','#829382',2.3));
   const sun=new THREE.DirectionalLight('#fff0d1',2.5);sun.position.set(-3,6,-4);scene.add(sun);
   const fill=new THREE.DirectionalLight('#dae8e1',.6);fill.position.set(4,2,3);scene.add(fill);
-  const rig=makePlayer(scene,'#efe7ce','#b98a5b',false);
+  const rig=makePlayer(scene,'#438b87','#b98a5b',false);
   const ground=new THREE.Mesh(new THREE.CircleGeometry(2.6,64),new THREE.MeshStandardMaterial({color:'#d5dccd',roughness:1}));ground.rotation.x=-Math.PI/2;ground.position.y=-.018;scene.add(ground);
   const grid=new THREE.GridHelper(4,16,'#bec9b4','#c9d2c1');grid.position.y=-.01;grid.material.transparent=true;grid.material.opacity=.35;scene.add(grid);
   const target=new THREE.Mesh(new THREE.SphereGeometry(B.radius*1.6,16,10),new THREE.MeshStandardMaterial({color:'#d7e763',emissive:'#b5c654',emissiveIntensity:.25}));scene.add(target);
@@ -36,7 +36,7 @@ export function createPreview(variant){
   const axes=new THREE.AxesHelper(.3);axes.visible=false;scene.add(axes);
   const trailGeometry=new THREE.BufferGeometry(),trailPositions=new Float32Array((PREVIEW.frames+1)*3);trailGeometry.setAttribute('position',new THREE.BufferAttribute(trailPositions,3));
   const trail=new THREE.Line(trailGeometry,new THREE.LineBasicMaterial({color:'#3b947f',transparent:true,opacity:.8}));trail.frustumCulled=false;trail.visible=false;scene.add(trail);
-  const nodes=[rig.root,rig.hips,rig.torso,...rig.legs.flatMap(a=>[a.upper,a.lower]),...rig.arms.flatMap(a=>[a.upper,a.lower,a.hand]),...rig.feet,rig.racket];
+  const nodes=[rig.root,rig.hips,rig.torso,rig.head,...rig.legs.flatMap(a=>[a.upper,a.lower]),...rig.hands.map(h=>h.hand),...rig.feet,rig.racket];
   return {variant,scene,rig,grid,target,skeleton,axes,trail,trailPositions,nodes,positions:new Float64Array((PREVIEW.frames+1)*nodes.length*3),rotations:new Float64Array((PREVIEW.frames+1)*nodes.length*4),gaps:new Float64Array(PREVIEW.frames+1),targetPosition:new Float64Array(3),hand:1,strike:86};
 }
 function capture(preview,frame){
@@ -46,7 +46,7 @@ function capture(preview,frame){
     preview.nodes[i].quaternion.toArray(preview.rotations,(frame*count+i)*4);
   }
   preview.rig.root.updateMatrixWorld(true);preview.rig.racket.updateMatrixWorld(true);
-  const arm=preview.rig.arms[preview.hand===1?1:0];arm.socket.getWorldPosition(scratch);preview.rig.racket.localToWorld(grip.set(0,-GRIP.headToGrip,0));preview.gaps[frame]=scratch.distanceTo(grip);
+  const handRig=preview.rig.hands[preview.hand===1?1:0];handRig.socket.getWorldPosition(scratch);preview.rig.racket.localToWorld(grip.set(0,-GRIP.headToGrip,0));preview.gaps[frame]=scratch.distanceTo(grip);
   preview.rig.racket.position.toArray(preview.trailPositions,frame*3);
 }
 export function bakePreview(preview,hand=1){
@@ -92,6 +92,6 @@ export function previewPhase(preview,frame){
   return 'Ready';
 }
 export function inspectPreview(preview,frame){
-  const p=preview.rig,arm=p.arms[preview.hand===1?1:0];p.root.updateMatrixWorld(true);p.racket.updateMatrixWorld(true);
-  return {variant:preview.variant.id,hand:preview.hand,frame,time:frame/PREVIEW.fps,phase:previewPhase(preview,frame),onsetFrame:PREVIEW.onset,strikeFrame:preview.strike,fixture:'Fixed player and planned target; no live ball collision or scoring.',target:Array.from(preview.targetPosition),racket:p.racket.position.toArray(),racketQuaternion:p.racket.quaternion.toArray(),wrist:arm.hand.getWorldPosition(scratch).toArray(),palmGrip:arm.socket.getWorldPosition(scratch).toArray(),grip:p.racket.localToWorld(scratch.set(0,-GRIP.headToGrip,0)).toArray(),shoulder:arm.upper.getWorldPosition(scratch).toArray(),elbow:arm.lower.getWorldPosition(scratch).toArray(),gripGapMeters:preview.gaps[frame]};
+  const p=preview.rig,handRig=p.hands[preview.hand===1?1:0];p.root.updateMatrixWorld(true);p.racket.updateMatrixWorld(true);
+  return {variant:preview.variant.id,hand:preview.hand,frame,time:frame/PREVIEW.fps,phase:previewPhase(preview,frame),onsetFrame:PREVIEW.onset,strikeFrame:preview.strike,fixture:'Fixed player and planned target; no live ball collision or scoring.',target:Array.from(preview.targetPosition),racket:p.racket.position.toArray(),racketQuaternion:p.racket.quaternion.toArray(),wrist:handRig.hand.getWorldPosition(scratch).toArray(),palmGrip:handRig.socket.getWorldPosition(scratch).toArray(),grip:p.racket.localToWorld(scratch.set(0,-GRIP.headToGrip,0)).toArray(),characterStyle:p.style,gripGapMeters:preview.gaps[frame]};
 }
