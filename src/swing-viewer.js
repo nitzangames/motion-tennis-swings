@@ -1,9 +1,9 @@
 import * as THREE from 'three';
 import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
-import {PREVIEW,VARIANTS,createPreview,bakePreview,samplePreview,previewPhase,previewEnd,inspectPreview} from './swing-preview.js';
+import {PREVIEW,VARIANTS,createPreview,bakePreview,samplePreview,previewPhase,previewStart,previewEnd,inspectPreview} from './swing-preview.js';
 const $=id=>document.getElementById(id);
-const settings={selected:1,mode:'all',hand:1,frame:PREVIEW.onset,timeline:'swing',playing:true,speed:.5,loop:true,trail:false,bones:false,target:true};
-let startFrame=PREVIEW.onset,endFrame=PREVIEW.frames;
+const settings={selected:1,mode:'all',hand:1,frame:PREVIEW.start,timeline:'swing',playing:true,speed:.5,loop:true,trail:false,bones:false,target:true};
+let startFrame=PREVIEW.start,endFrame=PREVIEW.frames;
 if(innerWidth<761)document.querySelector('.truth-note').open=false;
 const params=new URLSearchParams(location.search),requested=VARIANTS.findIndex(v=>v.id===params.get('swing'));
 if(requested>=0){settings.selected=requested;settings.mode='single';}if(params.get('view')==='single')settings.mode='single';if(params.get('view')==='all')settings.mode='all';if(params.get('hand')==='left')settings.hand=-1;if(params.get('paused')==='1')settings.playing=false;
@@ -23,7 +23,7 @@ for(let i=0;i<VARIANTS.length;i++){
 }
 function bake(){for(const preview of previews)bakePreview(preview,settings.hand);}
 function updateRange(){
-  startFrame=settings.timeline==='full'?0:PREVIEW.onset;
+  startFrame=settings.timeline==='full'?0:settings.mode==='single'?previewStart(previews[settings.selected]):PREVIEW.start;
   endFrame=settings.timeline==='full'?PREVIEW.frames:settings.mode==='single'?previewEnd(previews[settings.selected]):Math.max(...previews.map(previewEnd));
   if(settings.frame<startFrame||settings.frame>endFrame)settings.frame=startFrame;
   $('timeline').min=String(startFrame);$('timeline').max=String(endFrame);$('full-timeline').checked=settings.timeline==='full';
@@ -83,7 +83,7 @@ for(const button of document.querySelectorAll('[data-view]'))button.onclick=()=>
 for(const key of ['trail','bones','target'])$(key).onchange=()=>{settings[key]=$(key).checked;draw();};
 $('play').onclick=()=>play(!settings.playing);$('restart').onclick=()=>seek(startFrame);$('previous').onclick=()=>seek(Math.floor(settings.frame)-1);$('next').onclick=()=>seek(Math.floor(settings.frame)+1);$('timeline').oninput=()=>seek(Number($('timeline').value));
 $('full-timeline').onchange=()=>setTimeline($('full-timeline').checked?'full':'swing');
-$('onset').onclick=()=>seek(PREVIEW.onset);$('strike').onclick=()=>seek(previews[settings.selected].strike);$('speed').onchange=()=>{settings.speed=Number($('speed').value);};$('loop').onchange=()=>{settings.loop=$('loop').checked;};
+$('anticipation').onclick=()=>seek(previewStart(previews[settings.selected]));$('onset').onclick=()=>seek(PREVIEW.onset);$('finish').onclick=()=>seek(previews[settings.selected].strike+PREVIEW.followFrames);$('strike').onclick=()=>seek(previews[settings.selected].strike);$('speed').onchange=()=>{settings.speed=Number($('speed').value);};$('loop').onchange=()=>{settings.loop=$('loop').checked;};
 $('save-pose').onclick=()=>{
   const preview=previews[settings.selected],frame=Math.floor(settings.frame);samplePreview(preview,frame);const snapshot=inspectPreview(preview,frame),url=URL.createObjectURL(new Blob([JSON.stringify(snapshot,null,2)],{type:'application/json'}));const link=document.createElement('a');link.href=url;link.download=preview.variant.id+'-'+(settings.hand===1?'right':'left')+'-frame-'+frame+'.json';link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
 };
@@ -103,7 +103,8 @@ function frame(now){
 window.addEventListener('error',event=>{$('load-status').hidden=false;$('load-status').textContent='Viewer error: '+event.message;});
 bake();
 // Older links and explicit frame requests retain their original absolute frame.
-if(Number.isFinite(requestedFrame)&&(settings.frame<PREVIEW.onset||settings.frame>(settings.mode==='single'?previewEnd(previews[settings.selected]):Math.max(...previews.map(previewEnd)))))settings.timeline='full';
+if(Number.isFinite(requestedFrame)&&(settings.frame<(settings.mode==='single'?previewStart(previews[settings.selected]):PREVIEW.start)||settings.frame>(settings.mode==='single'?previewEnd(previews[settings.selected]):Math.max(...previews.map(previewEnd)))))settings.timeline='full';
+if(!Number.isFinite(requestedFrame))settings.frame=settings.timeline==='full'?0:settings.mode==='single'?previewStart(previews[settings.selected]):PREVIEW.start;
 setCamera('three-quarter');$('hand').value=String(settings.hand);select(settings.selected);setMode(settings.mode);play(settings.playing);$('load-status').hidden=true;
 window.SwingViewer=Object.freeze({
   ready:true,variants:()=>VARIANTS.map(v=>({...v})),

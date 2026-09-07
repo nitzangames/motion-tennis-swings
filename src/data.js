@@ -6,6 +6,7 @@ export function createState(seed=43,difficulty=1) {
     vx:new Float64Array(2),vz:new Float64Array(2),targetX:new Float64Array(2),targetZ:new Float64Array([10.6,-10.6]),reactionAt:new Float64Array(2),
     swingAt:new Float64Array([-10,-10]),contactAt:new Float64Array([-10,-10]),contactX:new Float64Array(2),contactY:new Float64Array(2),contactZ:new Float64Array(2),
     strokeAt:new Float64Array([-10,-10]),strokeX:new Float64Array(2),strokeY:new Float64Array(2),strokeZ:new Float64Array(2),strokeFromX:new Float64Array(2),strokeFromY:new Float64Array(2),strokeFromZ:new Float64Array(2),strokeLift:new Float64Array(2),strokeServe:new Uint8Array(2),prepare:new Float64Array(2),
+    windup:new Float64Array(2),windupSide:new Int8Array([1,1]),
     rackX:new Float64Array(2),rackY:new Float64Array([1,1]),rackZ:new Float64Array(2),oldRackX:new Float64Array(2),oldRackY:new Float64Array(2),oldRackZ:new Float64Array(2),
     armed:new Uint8Array(2),power:new Float64Array(2),shape:new Int8Array(2),side:new Int8Array([1,1]),timing:new Float64Array(2),aim:new Float64Array(2),
     points:new Uint16Array(2),games:new Uint8Array(2),tiebreak:false,tieFirst:0,server:0,serveNumber:1,serveSide:1,serveNet:false,serving:false,

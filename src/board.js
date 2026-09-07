@@ -161,7 +161,7 @@ export function animatePlayer(p,s,i,alpha,delta){
   const renderTime=s.time-(1-alpha)*B.dt;
   const stride=.19,weight=strokeWeight(s,i,renderTime),active=weight>0,age=renderTime-s.strokeAt[i],swing=strokeTurn(s,i,renderTime)*(i===0?s.hand:-1);
   const animationDelta=Math.max(0,Math.min(.1,renderTime-(p.animationAt??renderTime)));p.animationAt=renderTime;
-  const bob=speed>.2?Math.sin(renderTime*speed*2)*.027:.007*Math.sin(renderTime*2.7);p.hips.position.y=bob;
+  const bob=(speed>.2?Math.sin(renderTime*speed*2)*.027:.007*Math.sin(renderTime*2.7))-.045*s.windup[i]-.025*weight;p.hips.position.y=bob;
   const blend=1-Math.exp(-animationDelta*18),running=clamp(speed/3,0,1),plant=active?Math.max(0,1-Math.abs(age)/.12):0,split=s.phase==='rally'&&s.receiver===i&&s.time-s.contactAt[1-i]<.2?1:0;
   p.weights[0]+=(1-Math.max(running,active?1:0,split)-p.weights[0])*blend;p.weights[1]+=(split-p.weights[1])*blend;p.weights[2]+=(running-p.weights[2])*blend;p.weights[3]+=(plant-p.weights[3])*blend;p.weights[4]+=((active&&age<.15?1:0)-p.weights[4])*blend;p.weights[5]+=((active&&age>=.15?1:0)-p.weights[5])*blend;
   p.torso.rotation.y=swing;p.torso.rotation.z+=(clamp(-s.vx[i]*.025,-.12,.12)-p.torso.rotation.z)*blend;p.torso.rotation.x=-p.weights[3]*.08-p.weights[2]*.06;

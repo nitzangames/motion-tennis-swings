@@ -4,11 +4,12 @@ import * as THREE from 'three';
 import {B} from './balance.js';
 import {createState} from './data.js';
 import {submitSwing} from './logic.js';
-import {updateRacket} from './swing.js';
+import {STROKE,updateRacket} from './swing.js';
 import {makePlayer,animatePlayer} from './board.js';
 import {GRIP} from './grip.js';
 
-export const PREVIEW=Object.freeze({fps:120,frames:192,onset:72,toss:12,recoveryFrames:65});
+export const PREVIEW=Object.freeze({fps:120,frames:192,start:36,onset:72,toss:12,followFrames:Math.round(STROKE.follow*120),recoveryFrames:Math.ceil(STROKE.end*120)});
+export const previewStart=preview=>preview.variant.serve?PREVIEW.toss:PREVIEW.start;
 export const previewEnd=preview=>Math.min(PREVIEW.frames,preview.strike+PREVIEW.recoveryFrames);
 const notes=[
   'Shares its arm path with topspin. The ball physics differ.',
@@ -19,7 +20,7 @@ const notes=[
 ];
 export const VARIANTS=Object.freeze([
   ...['Forehand','Backhand'].flatMap((side,index)=>B.shapeNames.map((name,shape)=>Object.freeze({id:side.toLowerCase()+'-'+name.toLowerCase(),name:side+' '+name.toLowerCase(),family:side,shape,side:index===0?1:-1,serve:false,note:notes[shape]}))),
-  Object.freeze({id:'serve',name:'Serve',family:'Overhead',shape:4,side:1,serve:true,note:'Overhead stroke and recovery. Enable Full timeline to inspect toss preparation.'})
+  Object.freeze({id:'serve',name:'Serve',family:'Overhead',shape:4,side:1,serve:true,note:'Toss preparation, overhead strike, follow-through, and recovery.'})
 ]);
 const scratch=new THREE.Vector3(),grip=new THREE.Vector3();
 export function createPreview(variant){
@@ -71,7 +72,7 @@ export function bakePreview(preview,hand=1){
     updateRacket(s,0,B.dt);animatePlayer(p,s,0,1,B.dt);capture(preview,frame);
   }
   preview.target.position.fromArray(preview.targetPosition);
-  preview.trail.geometry.setDrawRange(PREVIEW.onset,Math.min(PREVIEW.frames-PREVIEW.onset+1,preview.strike+65-PREVIEW.onset));
+  preview.trail.geometry.setDrawRange(previewStart(preview),previewEnd(preview)-previewStart(preview)+1);
   preview.trail.geometry.attributes.position.needsUpdate=true;
 }
 export function samplePreview(preview,frame){
@@ -83,10 +84,10 @@ export function samplePreview(preview,frame){
   preview.axes.position.copy(preview.rig.racket.position);
 }
 export function previewPhase(preview,frame){
-  if(frame<PREVIEW.onset)return preview.variant.serve&&frame>=PREVIEW.toss?'Toss preparation':'Ready';
+  if(frame<PREVIEW.onset)return preview.variant.serve&&frame>=PREVIEW.toss?'Toss preparation':frame>=PREVIEW.start?'Anticipation':'Ready';
   if(frame<preview.strike-1)return 'Swing';
   if(frame<=preview.strike+1)return 'Planned strike';
-  if(frame<preview.strike+20)return 'Follow-through';
+  if(frame<=preview.strike+PREVIEW.followFrames)return 'Follow-through';
   if(frame<previewEnd(preview))return 'Recovery';
   return 'Ready';
 }

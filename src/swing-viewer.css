@@ -2,3 +2,5 @@
 body[data-mode=single] .intro{justify-content:flex-end;margin-bottom:14px}body[data-mode=single] .intro>div:first-child{display:none}body[data-mode=single] main{padding-top:20px}body[data-mode=single] .truth-note{padding-bottom:12px}@media(max-width:760px){body[data-mode=single] .truth-note{display:none}body[data-mode=single] .focus-heading p{display:none}body[data-mode=single] .focus-stage{height:45vh;min-height:330px}}
 
 .truth-note{display:block}.truth-note summary{cursor:pointer;color:#465d3e;font-size:12px;font-weight:600;margin-bottom:4px}.truth-note p{margin-left:14px}.focus-all{position:absolute;right:14px;top:14px;font-size:11px;background:#f7f8eeda}.focus-stage{scroll-margin-top:12px}@media(max-width:760px){.intro .eyebrow{display:none}.intro h1{font-size:34px}.truth-note{padding:12px 0}.truth-note summary{font-size:11px}}
+
+.timeline-markers{flex-wrap:wrap;row-gap:1px}

@@ -7,7 +7,7 @@ export function setupPoint(s){
   s.phase='ready';s.phaseTime=0;s.rally=0;s.bounces=0;s.serving=false;s.serveNet=false;s.armed.fill(0);s.pendingShot.fill(-1);s.referenceAt.fill(1e9);
   s.x[0]=s.server===0?s.serveSide*.85:0;s.x[1]=s.server===1?s.serveSide*.85:0;s.z[0]=12.25;s.z[1]=-12.25;
   s.targetX.set(s.x);s.targetZ.set(s.z);s.prevX.set(s.x);s.prevZ.set(s.z);s.vx.fill(0);s.vz.fill(0);
-  s.swingAt.fill(-10);s.strokeAt.fill(-10);s.prepare.fill(0);
+  s.swingAt.fill(-10);s.strokeAt.fill(-10);s.prepare.fill(0);s.windup.fill(0);s.windupSide.fill(1);
   for(let p=0;p<2;p++){updateRacket(s,p,0);s.oldRackX[p]=s.rackX[p];s.oldRackY[p]=s.rackY[p];s.oldRackZ[p]=s.rackZ[p];}
   s.ball.fill(0);s.ball[0]=s.x[s.server]+(s.server===0?s.hand:1)*.35;s.ball[1]=1.1;s.ball[2]=s.z[s.server];s.previous.set(s.ball.subarray(0,3));s.trailCount=0;
   s.call=isSetPoint(s,0)||isSetPoint(s,1)?'Set point':s.server===0?(s.serveNumber===2?'Second serve':'Your serve'):'Receiving';
