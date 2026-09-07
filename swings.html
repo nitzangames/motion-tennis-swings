@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#eff0e9">
+<title>Motion Tennis · Swing viewer</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48'%3E%3Ccircle cx='24' cy='24' r='22' fill='%23c4df79'/%3E%3Cpath d='M8 9Q40 20 27 46M39 9Q8 26 18 45' fill='none' stroke='%23264137' stroke-width='2'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="src/swing-viewer.css">
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.185.1/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.185.1/examples/jsm/"}}</script>
+</head>
+<body data-mode="all">
+<canvas id="preview-canvas" aria-label="Isolated animated tennis players"></canvas>
+<header><div class="brand"><span class="brand-mark">◉</span><a href="./">MOTION TENNIS</a><span class="slash">/</span><span>SWING VIEWER</span></div><a class="back-link" href="https://github.com/nitzangames/motion-tennis-swings">View source ↗</a></header>
+<main>
+<section class="intro"><div><div class="eyebrow">ANIMATION WORKBENCH</div><h1>Just the swing.</h1><p>One procedural rig. Eleven parameter combinations.<br>Click any swing to inspect it from every angle.</p></div><div class="mode-toggle" role="group" aria-label="Viewer mode"><button id="all-mode" aria-pressed="true">All swings <span>11</span></button><button id="single-mode" aria-pressed="false">Single swing</button></div></section>
+<section class="toolbar" aria-label="Animation controls">
+<label class="swing-select">Swing<select id="variant" aria-label="Swing variant"></select></label>
+<label>Racket hand<select id="hand"><option value="1">Right hand</option><option value="-1">Left hand</option></select></label>
+<div class="camera-controls" role="group" aria-label="Camera angle"><span>VIEW</span><button data-view="three-quarter" aria-pressed="true">¾</button><button data-view="front" aria-pressed="false">Front</button><button data-view="side" aria-pressed="false">Side</button><button data-view="back" aria-pressed="false">Back</button></div>
+<div class="toggles"><label><input id="trail" type="checkbox"> Racket path</label><label><input id="bones" type="checkbox"> Skeleton</label><label><input id="target" type="checkbox" checked> Strike target</label><label title="Include the ready pose, serve toss preparation, and idle tail"><input id="full-timeline" type="checkbox"> Full timeline</label></div>
+</section>
+<details class="truth-note" open><summary>What’s actually different?</summary><p>Flat and topspin share the same arm path. Slice lowers it, lob lifts it, and smash reverses it overhead. Backhand reverses the lateral sweep; serve adds toss preparation. Power currently affects ball flight, not the animation.</p></details>
+<section id="gallery" class="gallery" aria-label="All swing variations"></section>
+<section id="single" hidden>
+<div class="focus-heading"><div><span id="focus-kicker" class="eyebrow"></span><h2 id="focus-title"></h2></div><p id="focus-note"></p></div>
+<div id="focus-stage" class="focus-stage" aria-label="Drag to orbit; scroll or pinch to zoom"><span class="orbit-hint">Drag to orbit · Scroll / pinch to zoom</span><span id="phase-chip" class="phase-chip">READY</span><button id="focus-all" class="focus-all">← All swings</button></div>
+<div class="inspector"><div><span>FRAME</span><strong id="inspect-frame">0</strong></div><div><span>RACKET CENTRE · METRES</span><strong id="inspect-position">—</strong></div><div><span>PALM → HANDLE GAP</span><strong id="inspect-gap">—</strong></div><button id="save-pose">Save frame JSON ↓</button></div>
+<p class="fixture-note">Isolated fixture: the player stays in place. The yellow sphere marks the planned strike target; no ball collision, opponent, or scoring is simulated. These poses come from the production swing and arm code.</p>
+</section>
+<p class="source-note">Live source: <a href="src/swing.js">swing.js</a> + <a href="src/board.js">board.js</a> · 120 Hz deterministic samples · Space to play/pause · ← → to step</p>
+<div id="load-status" role="status">Loading the rig…</div>
+</main>
+<footer class="transport"><div class="transport-buttons"><button id="play" class="play-button" aria-label="Pause animation">Ⅱ</button><button id="restart" title="Restart" aria-label="Restart animation">↺</button><button id="previous" aria-label="Previous frame">←</button><button id="next" aria-label="Next frame">→</button></div><div class="timeline"><div class="timeline-labels"><span id="time-label">0.600 s</span><span id="range-label">SWING ONLY · 72–151</span><span id="frame-label">FRAME 072 / 151</span></div><input id="timeline" type="range" min="72" max="151" step="1" value="72" aria-label="Animation timeline"><div class="timeline-markers"><button id="onset">Swing onset</button><button id="strike">Strike frame*</button><span id="strike-explanation">*selected swing</span></div></div><div class="playback-options"><label>Speed<select id="speed"><option value="0.1">0.1×</option><option value="0.25">0.25×</option><option value="0.5" selected>0.5×</option><option value="1">1×</option></select></label><label class="loop-label"><input id="loop" type="checkbox" checked> Loop</label></div></footer>
+<script type="module" src="src/swing-viewer.js"></script>
+</body></html>
